@@ -19,9 +19,12 @@ global.IntersectionObserver = class IntersectionObserver {
 // Mock setTimeout and setInterval for testing
 jest.useFakeTimers();
 
+// 👇 Spy متغيّر عام نستخدمه في كل الاختبارات
+let logSpy;
+
 describe('Client-side JavaScript Tests', () => {
   let mockHTML;
-  
+
   beforeEach(() => {
     // Create a mock HTML structure
     mockHTML = `
@@ -65,17 +68,23 @@ describe('Client-side JavaScript Tests', () => {
         </body>
       </html>
     `;
-    
+
     document.documentElement.innerHTML = mockHTML;
-    
-    // Reset all mocks
+
+    // Reset all mocks/timers
     jest.clearAllMocks();
     jest.clearAllTimers();
+
+    // 👇 نفعل الـ spy على console.log ونمنع الطباعة في التيرمنال
+    logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    // Clean up
+    // Clean up DOM
     document.documentElement.innerHTML = '';
+
+    // 👇 نرجع console.log لوضعه الطبيعي
+    logSpy.mockRestore();
   });
 
   describe('DOM Content Loaded Event', () => {
@@ -86,15 +95,16 @@ describe('Client-side JavaScript Tests', () => {
           console.log('DOM loaded');
         });
       `;
-      
+
       // Execute the mock script
       eval(mockScript);
-      
+
       // Trigger DOMContentLoaded event
       const event = new Event('DOMContentLoaded');
       document.dispatchEvent(event);
-      
-      expect(console.log).toHaveBeenCalledWith('DOM loaded');
+
+      // ✅ التحقق على الـ spy بدل الدالة الأصلية
+      expect(logSpy).toHaveBeenCalledWith('DOM loaded');
     });
   });
 
@@ -110,12 +120,12 @@ describe('Client-side JavaScript Tests', () => {
         preventDefault: jest.fn(),
         target: navLink
       };
-      
+
       // Simulate click event
       navLink.addEventListener('click', function(e) {
         e.preventDefault();
       });
-      
+
       navLink.dispatchEvent(new Event('click'));
       // Note: In real implementation, preventDefault would be called
     });
@@ -142,21 +152,20 @@ describe('Client-side JavaScript Tests', () => {
 
     test('should handle scroll events', () => {
       const header = document.querySelector('.header');
-      const mockScrollEvent = new Event('scroll');
-      
+
       // Mock scroll position
       Object.defineProperty(window, 'scrollY', {
         value: 150,
         writable: true
       });
-      
+
       // Simulate scroll event handler
       const handleScroll = () => {
         if (window.scrollY > 100) {
           header.style.background = 'rgba(255, 255, 255, 0.98)';
         }
       };
-      
+
       handleScroll();
       expect(header.style.background).toBe('rgba(255, 255, 255, 0.98)');
     });
@@ -171,15 +180,15 @@ describe('Client-side JavaScript Tests', () => {
     test('should handle CTA button clicks', () => {
       const ctaButton = document.querySelector('.cta-button');
       const mockAlert = jest.spyOn(window, 'alert').mockImplementation(() => {});
-      
+
       // Simulate click handler
       const handleClick = () => {
         alert('Thank you for your interest! This is a demo application.');
       };
-      
+
       handleClick();
       expect(mockAlert).toHaveBeenCalledWith('Thank you for your interest! This is a demo application.');
-      
+
       mockAlert.mockRestore();
     });
   });
@@ -193,7 +202,7 @@ describe('Client-side JavaScript Tests', () => {
     test('should find elements to observe', () => {
       const curriculumCards = document.querySelectorAll('.curriculum-card');
       const benefitItems = document.querySelectorAll('.benefit-item');
-      
+
       expect(curriculumCards.length).toBeGreaterThan(0);
       expect(benefitItems.length).toBeGreaterThan(0);
     });
@@ -209,12 +218,12 @@ describe('Client-side JavaScript Tests', () => {
     test('should implement typing effect logic', () => {
       const heroTitle = document.querySelector('.hero-title');
       const originalText = heroTitle.textContent;
-      
+
       // Mock typing effect
       const typeWriter = (element, text, speed = 100) => {
         let i = 0;
         element.textContent = '';
-        
+
         const timer = setInterval(() => {
           if (i < text.length) {
             element.textContent += text.charAt(i);
@@ -223,17 +232,17 @@ describe('Client-side JavaScript Tests', () => {
             clearInterval(timer);
           }
         }, speed);
-        
+
         return timer;
       };
-      
+
       const timer = typeWriter(heroTitle, originalText, 100);
       expect(timer).toBeDefined();
-      
+
       // Fast-forward timers
       jest.advanceTimersByTime(originalText.length * 100);
       expect(heroTitle.textContent).toBe(originalText);
-      
+
       clearInterval(timer);
     });
   });
@@ -247,12 +256,12 @@ describe('Client-side JavaScript Tests', () => {
     test('should animate counter values', () => {
       const statElement = document.querySelector('.stat-number');
       const targetValue = 95;
-      
+
       // Mock counter animation
       const animateCounter = (element, target) => {
         let current = 0;
         const increment = target / 50;
-        
+
         const timer = setInterval(() => {
           current += increment;
           if (current >= target) {
@@ -261,17 +270,17 @@ describe('Client-side JavaScript Tests', () => {
           }
           element.textContent = Math.floor(current) + '%';
         }, 50);
-        
+
         return timer;
       };
-      
+
       const timer = animateCounter(statElement, targetValue);
       expect(timer).toBeDefined();
-      
+
       // Fast-forward timers
       jest.advanceTimersByTime(50 * 50); // 50 steps * 50ms
       expect(statElement.textContent).toBe('95%');
-      
+
       clearInterval(timer);
     });
   });
@@ -284,19 +293,19 @@ describe('Client-side JavaScript Tests', () => {
 
     test('should handle hover effects', () => {
       const techItem = document.querySelector('.tech-item');
-      
+
       // Mock hover event handlers
       const handleMouseEnter = () => {
         techItem.style.transform = 'translateY(-10px) scale(1.05)';
       };
-      
+
       const handleMouseLeave = () => {
         techItem.style.transform = 'translateY(0) scale(1)';
       };
-      
+
       handleMouseEnter();
       expect(techItem.style.transform).toBe('translateY(-10px) scale(1.05)');
-      
+
       handleMouseLeave();
       expect(techItem.style.transform).toBe('translateY(0) scale(1)');
     });
@@ -315,9 +324,10 @@ describe('Client-side JavaScript Tests', () => {
     
     Built with ❤️ using Node.js, Express, and vanilla JavaScript
     `;
-      
+
       console.log(welcomeMessage);
-      expect(console.log).toHaveBeenCalledWith(welcomeMessage);
+      // ✅ التحقق على الـ spy بدل الدالة الأصلية
+      expect(logSpy).toHaveBeenCalledWith(welcomeMessage);
     });
   });
 
@@ -326,7 +336,7 @@ describe('Client-side JavaScript Tests', () => {
       // Test with non-existent element
       const nonExistentElement = document.querySelector('.non-existent');
       expect(nonExistentElement).toBeNull();
-      
+
       // Should not throw error when trying to access properties
       expect(() => {
         if (nonExistentElement) {
@@ -342,9 +352,10 @@ describe('Client-side JavaScript Tests', () => {
       const startTime = performance.now();
       const elements = document.querySelectorAll('.curriculum-card, .benefit-item');
       const endTime = performance.now();
-      
+
       expect(elements.length).toBeGreaterThan(0);
       expect(endTime - startTime).toBeLessThan(10); // Should be very fast
     });
   });
 });
+
